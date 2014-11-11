@@ -1,3 +1,7 @@
+-- hold all prompts created
+prompt = nil
+prompts = { }
+
 function widgets.clock(...)
     local args = { ... }
     return function()
@@ -27,6 +31,23 @@ function widgets.tags(context)
         nil,
         context.oriented_container()
     )
+end
+
+function widgets.prompt(id)
+    if id == nil then
+        id = "default"
+    end
+
+    prompts[id] = awful.widget.prompt()
+
+    if id == "default" then
+        -- install global prompt
+        prompt = prompts.default
+    end
+
+    return function()
+        return prompts[id]
+    end
 end
 
 function widgets.tasks(context)
