@@ -4,8 +4,15 @@ prompts = { }
 
 function widgets.clock(...)
     local args = { ... }
-    return function()
-        return awful.widget.textclock(unpack(args))
+    return function(context)
+
+        local box = context.oriented_container()
+        if beautiful.widget_clock then
+            box:add(wibox.widget.imagebox(beautiful.widget_clock))
+        end
+
+        box:add(awful.widget.textclock(unpack(args)))
+        return box
     end
 end
 
@@ -106,5 +113,122 @@ function widgets.layouts(context)
         )
     )
     return box
+end
+
+function widgets.image(image)
+    return function()
+        wibox.widget.imagebox(image)
+    end
+end
+
+function widgets.battery(battery)
+    local file = string.format("/sys/class/power_supply/%s/capacity", battery)
+
+    local monitor = wibox.widget.textbox("")
+    local function update_battery()
+        local perc = tonumber(first_line(file))
+
+        local color = beautiful.widget_bat_full
+        if perc < 15 then
+            color = beautiful.widget_bat_low
+        elseif perc < 50 then
+            color = beautiful.widget_bat_med
+        end
+
+        color = color or beautiful.fg_normal
+        monitor:set_markup(html(color, perc .. "%"))
+    end
+
+    return function(context)
+        local box = context.oriented_container()
+        if beautiful.widget_bat then
+            box:add(wibox.widget.imagebox(beautiful.widget_bat))
+        end
+
+        update_battery()
+        box:add(monitor)
+
+        local updater = timer({ timeout = 60 })
+        updater:connect_signal("timeout", update_battery)
+        updater:start()
+
+        return box
+    end
+end
+
+function widgets.alsa(context)
+    local monitor = wibox.widget.textbox("")
+    local color = beautiful.widget_alsa_fg or beautiful.fg_normal
+    local function update_volume()
+        local f = assert(io.popen("amixer get Master"))
+        local mixer = f:read("*all")
+        f:close()
+
+        local perc = string.match(mixer, "([%d]+)%%")
+
+        monitor:set_markup(html(color, perc .. "%"))
+    end
+
+    local box = context.oriented_container()
+    if beautiful.widget_vol then
+        box:add(wibox.widget.imagebox(beautiful.widget_vol))
+    end
+
+    update_volume()
+    box:add(monitor)
+
+    local updater = timer({ timeout = 3 })
+    updater:connect_signal("timeout", update_volume)
+    updater:start()
+
+    return box
+end
+
+function widgets.network(iface)
+    local path = string.format("/sys/class/net/%s/statistics", iface)
+
+    local downmon = wibox.widget.textbox("")
+    local upmon = wibox.widget.textbox("")
+    local timeout = 3
+    local unit = 1024
+
+    local down_color = beautiful.fg_net_down or beautiful.fg_normal
+    local up_color = beautiful.fg_net_up or beautiful.fg_normal
+
+    local last_t, last_r = 0, 0
+    local function update_network()
+        local now_t = first_line(path .. "/tx_bytes") or 0
+        local now_r = first_line(path .. "/rx_bytes") or 0
+
+        local dt, dr = now_t - last_t, now_r - last_r
+        last_t, last_r = now_t, now_r
+
+        local sent = dt / timeout / unit
+        local recv = dr / timeout / unit
+
+        downmon:set_markup(html(down_color, string.format("%.1f", recv)))
+        upmon:set_markup(html(up_color, string.format("%.1f", sent)))
+    end
+
+    return function(context)
+        local box = context.oriented_container()
+        if beautiful.widget_net_down then
+            box:add(wibox.widget.imagebox(beautiful.widget_net_down))
+        end
+        box:add(downmon)
+
+        if beautiful.widget_net_up then
+            box:add(wibox.widget.imagebox(beautiful.widget_net_up))
+        end
+        box:add(upmon)
+
+        update_network()
+
+        local updater = timer({ timeout = timeout })
+        updater:connect_signal("timeout", update_network)
+        updater:start()
+
+        return box
+    end
 end
 
