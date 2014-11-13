@@ -2,14 +2,19 @@
 prompt = nil
 prompts = { }
 
+local function add_image(container, img)
+    if img then
+        container:add(wibox.widget.imagebox(img))
+    end
+end
+
 function widgets.clock(...)
+    -- TODO: This doesn't use the format() function. Is that a bad thing?
     local args = { ... }
     return function(context)
 
         local box = context.oriented_container()
-        if beautiful.widget_clock then
-            box:add(wibox.widget.imagebox(beautiful.widget_clock))
-        end
+        add_image(box, beautiful.widget_clock)
 
         box:add(awful.widget.textclock(unpack(args)))
         return box
@@ -141,9 +146,7 @@ function widgets.battery(battery)
 
     return function(context)
         local box = context.oriented_container()
-        if beautiful.widget_bat then
-            box:add(wibox.widget.imagebox(beautiful.widget_bat))
-        end
+        add_image(box, beautiful.widget_bat)
 
         update_battery()
         box:add(monitor)
@@ -170,9 +173,7 @@ function widgets.alsa(context)
     end
 
     local box = context.oriented_container()
-    if beautiful.widget_vol then
-        box:add(wibox.widget.imagebox(beautiful.widget_vol))
-    end
+    add_image(box, beautiful.widget_vol)
 
     update_volume()
     box:add(monitor)
@@ -212,20 +213,89 @@ function widgets.network(iface)
 
     return function(context)
         local box = context.oriented_container()
-        if beautiful.widget_net_down then
-            box:add(wibox.widget.imagebox(beautiful.widget_net_down))
-        end
+        add_image(box, beautiful.widget_net_down)
         box:add(downmon)
 
-        if beautiful.widget_net_up then
-            box:add(wibox.widget.imagebox(beautiful.widget_net_up))
-        end
+        add_image(box, beautiful.widget_net_up)
         box:add(upmon)
 
+        update_network()
         update_network()
 
         local updater = timer({ timeout = timeout })
         updater:connect_signal("timeout", update_network)
+        updater:start()
+
+        return box
+    end
+end
+
+register_signal("cmus")
+function widgets.cmus(formatter)
+    local parsers = {
+         ["([%w]+)[%s]([%w]+)$"] = {
+             status = true,
+             duration = true,
+             position = true
+         },
+
+         ["tag[%s]([%w]+)[%s](.[^,[(]*)"] = {
+             title = true,
+             artist = true,
+             albumartist = true
+         },
+
+         ["tag[%s]([%w]+)[%s](.*)$"] = {
+             status = true,
+             date = true,
+             album = true,
+             genre = true
+         }
+    }
+
+    local checkTags = { "title", "artist" }
+
+    local last = { }
+
+    local monitor = wibox.widget.textbox("")
+    local function update_cmus()
+        local cmus_state = { }
+
+        local f = io.popen("cmus-remote -Q")
+        for line in f:lines() do
+            for parser, tags in pairs(parsers) do
+                for k, v in string.gmatch(line, parser) do
+                    if tags[k] then
+                        cmus_state[k] = v
+                    end
+                end
+            end
+        end
+        f:close()
+
+        monitor:set_markup(formatter(cmus_state))
+
+        local different = false
+        for _, tag in ipairs(checkTags) do
+            if last[tag] ~= cmus_state[tag] then
+                different = true
+                last[tag] = cmus_state[tag]
+            end
+        end
+
+        if different then
+            emit("cmus", cmus_state)
+        end
+    end
+
+    return function(context)
+        local box = context.oriented_container()
+        add_image(box, beautiful.widget_note_on)
+        box:add(monitor)
+        update_cmus()
+
+        local updater = timer({ timeout = 2 })
+        updater:connect_signal("timeout", update_cmus)
         updater:start()
 
         return box
