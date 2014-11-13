@@ -1,6 +1,7 @@
 -- hold all prompts created
 prompt = nil
 prompts = { }
+cmus = nil
 
 local function add_image(container, img)
     if img then
@@ -231,6 +232,27 @@ function widgets.network(iface)
 end
 
 register_signal("cmus")
+
+local function cmus_cmd(which)
+    return function()
+        system("cmus-remote --" .. which)
+        if cmus then
+            cmus.update()
+        end
+    end
+end
+
+commands.cmus = {
+    play = cmus_cmd("play"),
+    pause = cmus_cmd("pause"),
+    next = cmus_cmd("next"),
+    prev = cmus_cmd("prev"),
+    stop = cmus_cmd("stop"),
+    filter = function(query)
+        system("cmus-remote -C \"live-filter " .. query .. "\"")
+    end
+}
+
 function widgets.cmus(formatter)
     local parsers = {
          ["([%w]+)[%s]([%w]+)$"] = {
@@ -297,6 +319,9 @@ function widgets.cmus(formatter)
         local updater = timer({ timeout = 2 })
         updater:connect_signal("timeout", update_cmus)
         updater:start()
+
+        cmus = box
+        cmus.update = update_cmus
 
         return box
     end
