@@ -159,9 +159,16 @@ function widgets.battery(battery)
     end
 end
 
+local alsa
 commands.alsa = {
-    louder = function() system("amixer -q set Master 2dB+") end,
-    softer = function() system("amixer -q set Master 2dB-") end,
+    louder = function()
+        system("amixer -q set Master 2dB+")
+        alsa.update()
+    end,
+    softer = function()
+        system("amixer -q set Master 2dB-")
+        alsa.update()
+    end,
     -- TODO: we should have a mute here
 }
 
@@ -187,6 +194,9 @@ function widgets.alsa(context)
     local updater = timer({ timeout = 3 })
     updater:connect_signal("timeout", update_volume)
     updater:start()
+
+    monitor.update = update_volume
+    alsa = monitor
 
     return box
 end
@@ -294,7 +304,7 @@ function widgets.cmus(formatter)
             for parser, tags in pairs(parsers) do
                 for k, v in string.gmatch(line, parser) do
                     if tags[k] then
-                        cmus_state[k] = v
+                        cmus_state[k] = v:gsub("&", "&amp;")
                     end
                 end
             end
