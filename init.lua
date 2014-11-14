@@ -1,7 +1,6 @@
 -- hold all prompts created
 prompt = nil
 prompts = { }
-cmus = nil
 
 local function add_image(container, img)
     if img then
@@ -160,6 +159,12 @@ function widgets.battery(battery)
     end
 end
 
+commands.alsa = {
+    louder = function() system("amixer -q set Master 2dB+") end,
+    softer = function() system("amixer -q set Master 2dB-") end,
+    -- TODO: we should have a mute here
+}
+
 function widgets.alsa(context)
     local monitor = wibox.widget.textbox("")
     local color = beautiful.widget_alsa_fg or beautiful.fg_normal
@@ -233,6 +238,7 @@ end
 
 register_signal("cmus")
 
+local cmus
 local function cmus_cmd(which)
     return function()
         system("cmus-remote --" .. which)
