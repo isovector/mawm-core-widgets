@@ -126,10 +126,12 @@ function widgets.image(image)
     end
 end
 
+register_signal("battery")
 function widgets.battery(battery)
     local file = string.format("/sys/class/power_supply/%s/capacity", battery)
 
     local monitor = wibox.widget.textbox("")
+    local lastPerc
     local function update_battery()
         local perc = tonumber(first_line(file))
 
@@ -139,6 +141,11 @@ function widgets.battery(battery)
         elseif perc < 50 then
             color = beautiful.widget_bat_med
         end
+
+        if lastPerc and perc ~= lastPerc then
+            emit("battery", perc)
+        end
+        lastPerc = perc
 
         color = color or beautiful.fg_normal
         monitor:set_markup(html(color, perc .. "%"))
