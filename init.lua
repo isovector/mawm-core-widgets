@@ -111,10 +111,10 @@ end
 function widgets.layouts(context)
     local box = awful.widget.layoutbox(context.screen)
     box:buttons(awful.util.table.join(
-            rawbutton("1", function () awful.layout.inc( 1) end),
-            rawbutton("3", function () awful.layout.inc(-1) end),
-            rawbutton("4", function () awful.layout.inc( 1) end),
-            rawbutton("5", function () awful.layout.inc(-1) end)
+            rawbutton("1", function () awful.layout.inc(awful.layout.layouts, 1) end),
+            rawbutton("3", function () awful.layout.inc(awful.layout.layouts, -1) end),
+            rawbutton("4", function () awful.layout.inc(awful.layout.layouts,  1) end),
+            rawbutton("5", function () awful.layout.inc(awful.layout.layouts, -1) end)
         )
     )
     return box
