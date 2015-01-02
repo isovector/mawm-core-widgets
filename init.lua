@@ -143,7 +143,7 @@ function widgets.battery(battery)
         end
 
         if lastPerc and perc ~= lastPerc then
-            emit("battery", perc)
+            emit("battery", perc, lastPerc)
         end
         lastPerc = perc
 
@@ -188,8 +188,9 @@ function widgets.alsa(context)
         f:close()
 
         local perc = string.match(mixer, "([%d]+)%%")
-
-        monitor:set_markup(html(color, perc .. "%"))
+        if perc then
+            monitor:set_markup(html(color, perc .. "%"))
+        end
     end
 
     local box = context.oriented_container()
@@ -271,6 +272,9 @@ commands.cmus = {
     next = cmus_cmd("next"),
     prev = cmus_cmd("prev"),
     stop = cmus_cmd("stop"),
+    rep = cmus_cmd("repeat"),
+    continuous = cmus_cmd("raw 'toggle continue'"),
+    shuffle = cmus_cmd("shuffle"),
     filter = function(query)
         system("cmus-remote -C \"live-filter " .. query .. "\"")
     end
@@ -291,11 +295,16 @@ function widgets.cmus(formatter)
          },
 
          ["tag[%s]([%w]+)[%s](.*)$"] = {
-             status = true,
              date = true,
              album = true,
              genre = true
-         }
+         },
+
+         ["set[%s]([%w]+)[%s](.*)$"] = {
+            ["repeat"] = true,
+            shuffle = true,
+            continue = true
+         },
     }
 
     local checkTags = { "title", "artist" }
